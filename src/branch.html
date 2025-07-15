@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>支线液量统计系统</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+    <!-- 保留必须的动画样式 -->
+    <style>
+        @keyframes placeholder-pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.4; }
+        }
+        .drop-placeholder {
+            background-color: #3498db;
+            animation: placeholder-pulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="branch-container">
+        <h2 class="text-center mb-3" style="color: var(--primary-color);">支线液量统计系统</h2>
+        
+        <!-- 第一部分：各井组详细统计（保持不变） -->
+        <div class="branch-section">
+            <h4 class="branch-title">
+                各井组详细统计
+                <div class="stats-header">
+                    <span>总液量：<strong id="totalLiquid">0.0</strong>t</span>
+                    <span>总油量：<strong id="totalOil">0.0</strong>t</span>
+                    <span>总井数：<strong id="totalWells">0</strong>口</span>
+                </div>
+            </h4>
+            <div id="groupStatsBody"></div>
+        </div>
+        <!-- 第二部分：支线分配管理（修改布局） -->
+        <div class="branch-section">
+<h4 class="branch-title">支线分配管理
+    <div class="btn-group ms-auto">
+        <button class="btn btn-sm btn-outline-secondary" onclick="resetToOther()">重置井组分配</button>
+        <button class="btn btn-sm btn-outline-primary" onclick="resetToDefault()">恢复默认分配</button>
+    </div>
+</h4>
+<!-- 在下方添加提示 -->
+<div class="alert alert-info py-2 px-3 mb-3" style="font-size:0.9em">
+    <i class="bi bi-info-circle"></i> 提示：双击任意井组名称可查看详细生产数据
+</div>
+            
+            <div class="branch-columns">
+                <div class="branch-column">
+                    <div class="branch-title">
+                        <div class="branch-name">CB4E支线</div>
+                        <div class="branch-stats">
+                            <span>液量: <span class="stat-value">0.0</span>t</span>
+                            <span>油量: <span class="stat-value">0.0</span>t</span>
+                        </div>
+                        <div class="drag-hint">拖动井组调整分配</div>
+                    </div>
+                    <div class="branch-groups" 
+                         ondrop="dropGroup(event, 'CB4E支线')"    
+                         ondragover="allowDrop(event)"
+                         id="branchCB4E"></div>
+                </div>
+                
+                <div class="branch-column">
+                    <div class="branch-title">
+                        <div class="branch-name">CB1F支线</div>
+                        <div class="branch-stats">
+                            <span>液量: <span class="stat-value">0.0</span>t</span>
+                            <span>油量: <span class="stat-value">0.0</span>t</span>
+                        </div>
+                        <div class="drag-hint">拖动井组调整分配</div>
+                    </div>
+                    <div class="branch-groups" 
+                         ondrop="dropGroup(event, 'CB1F支线')"    
+                         ondragover="allowDrop(event)"
+                         id="branchCB1F"></div>
+                </div>
+
+                <div class="branch-column">
+                    <div class="branch-title">
+                        <div class="branch-name">CB22F支线</div>
+                        <div class="branch-stats">
+                            <span>液量: <span class="stat-value">0.0</span>t</span>
+                            <span>油量: <span class="stat-value">0.0</span>t</span>
+                        </div>
+                        <div class="drag-hint">拖动井组调整分配</div>
+                    </div>
+                    <div class="branch-groups" 
+                         ondrop="dropGroup(event, 'CB22F支线')"    
+                         ondragover="allowDrop(event)"
+                         id="branchCB22F"></div>
+                </div>
+
+                <div class="branch-column">
+                    <div class="branch-title">
+                        <div class="branch-name">CB26支线</div>
+                        <div class="branch-stats">
+                            <span>液量: <span class="stat-value">0.0</span>t</span>
+                            <span>油量: <span class="stat-value">0.0</span>t</span>
+                        </div>
+                        <div class="drag-hint">拖动井组调整分配</div>
+                    </div>
+                    <div class="branch-groups" 
+                         ondrop="dropGroup(event, 'CB26支线')"    
+                         ondragover="allowDrop(event)"
+                         id="branchCB26"></div>
+                </div>
+            </div>
+
+            <!-- 其他未选择支线 -->
+    <div class="branch-column other-column other-name">
+        <div class="branch-title">
+            <div class="branch-name">其他未选择支线的井组</div>
+            <div class="branch-stats">
+                <span>液量: <span class="stat-value">0.0</span>t</span>
+                <span>油量: <span class="stat-value">0.0</span>t</span>
+            </div>
+            <div class="drag-hint">拖动井组调整分配</div>
+        </div>
+        <div class="branch-groups" 
+             ondrop="dropGroup(event, '其他未选择支线的井组')"    
+             ondragover="allowDrop(event)"
+             id="branchOther"></div>
+    </div>
+</div>
+    </div>
+<div class="modal fade" id="groupDetailModal">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">井组生产明细</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+<div class="modal-body">
+  <div class="d-flex justify-content-between mb-3">
+    <div>
+      <span class="me-3">所在支线：<strong id="detailBranch"></strong></span>
+      <span class="me-3">总井数：<strong id="detailTotal">0</strong></span>
+      <span class="me-3">开井数：<strong id="detailStarted">0</strong></span>
+      <span>长停井数：<strong id="detailLongStop">0</strong></span>
+    </div>
+  </div>
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>序号</th>
+        <th>井号</th>
+        <th>液量(t)</th>
+        <th>油量(t)</th>
+        <th>气量(m³)</th>
+        <th>状态</th>
+      </tr>
+    </thead>
+    <tbody id="detailBody"></tbody>
+  </table>
+</div>
+    </div>
+  </div>
+</div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="branch.js"></script>
+</body>
+</html>
