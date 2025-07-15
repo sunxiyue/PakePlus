@@ -1,125 +1,463 @@
-.logo.vanilla:hover {
-    filter: drop-shadow(0 0 2em #ffe21c);
-}
-:root {
-    font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-    font-size: 16px;
-    line-height: 24px;
-    font-weight: 400;
-
-    color: #0f0f0f;
-    background-color: #f6f6f6;
-
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-text-size-adjust: 100%;
+/* css/styles.css  */
+/* 基础容器 */
+.table-container {
+    max-width: 98vw;
+    margin: 0 auto;
+    overflow-x: auto;
 }
 
-.container {
-    margin: 0;
-    padding-top: 10vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+/* 表格核心样式 */
+.table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 800px; /* 保证最小宽度 */
+}
+
+.table td, .table th {
     text-align: center;
+    vertical-align: middle;
+    padding: 4px 6px;
+    line-height: 1.3;
 }
 
-.logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: 0.75s;
+/* 固定表头优化 */
+.fixed-header th {
+    background: #2c3e50;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
-.logo.tauri:hover {
-    filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-    display: flex;
-    justify-content: center;
-}
-
-a {
-    font-weight: 500;
-    color: #646cff;
-    text-decoration: inherit;
-}
-
-a:hover {
-    color: #535bf2;
-}
-
-h1 {
-    text-align: center;
-}
-
-input,
-button {
+/* 响应式表格容器 */
+.table-responsive {
+    max-height: 59vh;
+    overflow-y: auto;
+    margin: 20px 0;
+    border: 1px solid #dee2e6;
     border-radius: 8px;
-    border: 1px solid transparent;
-    padding: 0.6em 1.2em;
-    font-size: 1em;
-    font-weight: 500;
-    font-family: inherit;
-    color: #0f0f0f;
-    background-color: #ffffff;
-    transition: border-color 0.25s;
-    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0 15px rgba(0,0,0,0.05);
 }
 
-button {
+        /* 新增悬浮框样式 */
+        .fixed-notice-panel {
+            position: fixed;
+            left: auto;
+            right: 330px;
+            top: 10px;
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 5px;
+            padding: 10px 15px;
+            z-index: 1000;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            font-size: 14px;
+            color: #856404;
+        }
+
+/* 状态按钮系统 */
+/* 井组状态 */
+.group-status-btn {
+    padding: 4px 12px;
+    border: 1px solid;
+    border-radius: 15px;
+    font-weight: 600;
     cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-block;
+    min-width: 80px;
+    text-align: center;
+}
+.group-normal { background-color: #6c757d; border-color: #5a6268; color: white; }
+.group-stopped { background-color: #dc3545; border-color: #c82333; color: white; }
+.group-started { background-color: #218838; border-color: #1e7e34; color: white; }
+
+ 
+/* 油井状态核心样式（使用原始类名）*/
+.status-long-stop { 
+    background-color: #f0f0f0 !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+}
+td:nth-child(12) {
+    max-width: 150px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.status-stopped { 
+    background-color: #ffcccc !important; /* 停井中红色背景 */
+    color: #dc3545;
+}
+.status-started { 
+    background-color: #ccffcc !important; /* 已开井绿色背景 */
+    color: #198754;
 }
 
-button:hover {
-    border-color: #396cd8;
-}
-button:active {
-    border-color: #396cd8;
-    background-color: #e8e8e8;
-}
-
-input,
-button {
-    outline: none;
-}
-
-#greet-input {
-    margin-right: 5px;
+/* 备注列优化 */
+.note-cell {
+    max-width: 200px;
+    min-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9em;
+    padding: 3px 8px;
+    cursor: default;
+    position: relative;
+    transition: all 0.2s ease;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        color: #f6f6f6;
-        background-color: #2f2f2f;
+.note-cell:hover {
+    background-color: #f8f9fa;
+    box-shadow: inset 0 0 0 1px #dee2e6;
+}
+
+/* 统计面板定位 */
+.stats-panel {
+    position: fixed;
+    top: 22px;
+    right: 50px;
+    background: #f8f9fa;
+    padding: 15px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    z-index: 200;
+    border: 1px solid #2c3e50;
+    border-radius: 8px;
+    transition: top 0.3s ease;
+    min-width: 200px;
+}
+
+/* 统计表格终极修复方案 */
+/* 统计表格响应式修复 */
+.stat-table-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin: 1rem 0;
+    background: white;
+}
+ 
+.stat-table {
+    min-width: 600px;
+    table-layout: fixed;
+    margin-bottom: 0;
+}
+ 
+.stat-table th {
+    background: #2c3e50 !important;
+    color: white;
+    position: sticky;
+    left: 0;
+    white-space: nowrap;
+}
+ 
+.stat-table td {
+    vertical-align: middle;
+    padding: 0.75rem !important;
+}
+ 
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .stats-table th,
+    .stats-table td {
+        padding: 8px 10px;
+        font-size: 0.9em;
     }
-
-    a:hover {
-        color: #24c8db;
-    }
-
-    input,
-    button {
-        color: #ffffff;
-        background-color: #0f0f0f98;
-    }
-    button:active {
-        background-color: #0f0f0f69;
+    
+    .stats-table {
+        min-width: 500px;
     }
 }
 
-.invokeBox {
+/* 新增支线管理样式 */
+.branch-container {
+    max-width: 1600px;
+    margin: 20px auto;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.branch-columns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.branch-column {
+    height: 380px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+}
+
+.branch-title {
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: center;
-    gap: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
 }
 
-.resultBox {
-    margin: 10px 0;
+.branch-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.branch-groups {
+    min-height: 100px;
+    padding: 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 4px;
+}
+
+.draggable-group {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 15px;
+    padding: 4px 12px;
+    margin: 4px;
+    cursor: move;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+    min-width: 60px;
+    text-align: center;
+}
+
+.draggable-group:hover {
+    background-color: #3498db !important;
+    border-color: #3498db;
+    color: white;
+}
+
+.drag-hint {
+    width: 100%;
+    font-size: 0.75em;
+    color: #666;
+    margin-top: 4px;
+}
+
+		/* 双击显示表格样式 */
+#groupDetailModal .table {
+  table-layout: fixed;
+  width: 80%;
+}
+#groupDetailModal th, 
+#groupDetailModal td {
+  text-align: center;
+  padding: 8px;
+  font-size: 0.9em;
+}
+		#groupDetailModal .modal-dialog {
+  max-width: 50vw; /* 限制模态框最大宽度 */
+}
+ 
+#groupDetailModal .table {
+  width: auto !important; /* 取消固定宽度 */
+  min-width: 800px; /* 最小保证表格可读性 */
+  margin: 0 auto; /* 居中显示 */
+}
+		
+.toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 280px;
+    padding: 1.2rem 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    color: white;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+	
+}
+
+.toast.show  {
+    opacity: 1;
+    transform: translate(-50%, -55%);
+}
+
+.toast.alert-danger  { 
+    background: #e74c3c;
+    border: 1px solid #c0392b;
+}
+
+.toast.alert-warning  {
+    background: #f1c40f;
+    color: #2c3e50;
+    border: 1px solid #f39c12;
+}
+
+.toast.alert-info  {
+    background: #3498db;
+    border: 1px solid #2980b9;
+}
+
+.toast.alert-success  {
+    background: #2ecc71;
+    border: 1px solid #27ae60;
+}
+
+.toast .btn-close {
+  display: none; /* 隐藏关闭按钮 */
+}
+ 
+.alert-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+/* 支线表格修复 */
+.excel-table {
+    border-collapse: collapse;
+    margin: 15px 0;
+    width: auto;
+    background: white;
+}
+
+.excel-table th, 
+.excel-table td {
+    border: 1px solid #ddd;
+    padding: 6px 8px;
+    text-align: center;
+    min-width: 60px;
+    font-size: 0.9em;
+}
+
+.excel-table th {
+    background-color: #f2f2f2 !important;
+    font-weight: 600;
+}
+
+
+
+/* 井组容器尺寸控制 */
+        .branch-groups {
+            height: calc(100% - 80px); /* 优化高度计算 */
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 4px;
+            padding: 8px;
+        }
+
+
+    /* 其他支线特殊处理 */
+.branch-column.other-column {
+    height: auto !important;
+    min-height: 200px;
+}
+
+/* 统计表格容器 */
+#groupStatsBody {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+		    /* 统一所有支线标题样式 */
+    .branch-column .branch-name.other-name {
+        color: var(--primary-color) !important;
+        font-size: 1.1rem !important;
+    }
+    .branch-column.other-column  .branch-groups {
+        min-height: 60px; /* 最小高度保障 */
+    }
+
+		    /* 新增占位符样式 */
+.drag-ghost {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+ 
+.drop-placeholder {
+    width: 2px;
+    height: 24px;
+    background-color: #3498db;
+    margin: 2px 0;
+    position: relative;
+    opacity: 0.6;
+    transition: all 0.2s;
+    animation: placeholder-pulse 1s infinite;
+}
+ 
+/* 添加流动光效 */
+@keyframes placeholder-pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.4; }
+}
+ 
+/* 添加细线两端的小圆点 */
+.drop-placeholder::before,
+.drop-placeholder::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: #3498db;
+    border-radius: 50%;
+    left: -1px;
+}
+ 
+.drop-placeholder::before { top: -2px; }
+.drop-placeholder::after { bottom: -2px; }
+
+.branch-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* 新增状态筛选样式 */
+#statusFilter {
+    min-width: 120px;
+    margin-left: 8px;
+}
+
+/* 时间输入框样式 */
+input[type="time"] {
+    text-align: center;
+}
+
+.variable-frequency {
+    margin: 8px 0;
+    padding: 10px;
+    background: #e9ecef;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.variable-frequency-title {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.95em;
+    margin-bottom: 4px;
 }
