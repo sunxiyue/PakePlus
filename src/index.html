@@ -1,32 +1,658 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="stylesheet" href="styles.css" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus App</title>
-        <script type="module" src="/main.js" defer></script>
-    </head>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>海四管理区液量核算系统</title>
+    <link href="css/bootstrap.min.css"  rel="stylesheet">
+    <link rel="stylesheet" href="./css/styles.css?v=<?=filemtime('./css/styles.css')?>"> 
+    <link rel="icon" href="./css/favicon.ico"   type="image/x-icon">
+    <link rel="shortcut icon" href="./css/favicon.ico"   type="image/x-icon">
+    <style>
+    /* 小时数模式下影响小时数输入框宽度 */
+    input[type="number"].form-control.hour-mode {
+      max-width: 70px;
+      min-width: 50px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    input[type="time"].form-control {
+      max-width: 140px;
+      min-width: 100px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .table td input.form-control {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    /* 打印模态框宽度加大 */
+    #printModal .modal-dialog {
+      max-width: 1200px;
+    }
+    </style>
+</head>
+<body>
+    <!-- 新增的固定提示框 -->
+<div class="fixed-notice-panel">
+    需注意：
+    CBX212在CB6F  
+    CBGX605在CB4E<br>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+    SHG1在CB246  
+    CB1A-N2在CB6E 
+</div>
 
-    <body>
-        <main class="container">
-            <h1>Welcome to PakePlus</h1>
-            <form class="row" id="greet-form">
-                <input id="inputValue" placeholder="Enter a something..." />
-            </form>
-            <div class="resultBox">
-                <span>result: </span>
-                <span id="result"></span>
+    <div class="container-fluid p-4">
+        <!-- 全局统计 -->
+        <div class="stats-panel" id="rightStatsPanel">
+            总井数：<span id="totalWells">0</span> 口
+            长停井数：<span id="longStopWells">0</span> 口
+        </div>
+
+        <!-- 操作区 -->
+        <div class="mb-4">
+<div class="input-group mb-3 position-relative">
+    <span class="input-group-text bg-primary text-white">操作流程：</span>
+    <span class="input-group-text">1. 先导入油井数据 →</span>
+    <input type="file" id="excelFile" class="form-control" accept=".xls,.xlsx" style="max-width: 300px">
+    <!-- 新增日期显示 -->
+    <span class="input-group-text" id="dataDateDisplay" style="min-width: 160px; font-size:14px">
+        数据日期：未导入
+    </span>
+                
+                <!-- 修改后的标题 -->
+                <h2 class="text-center mb-3" 
+                    style="color: var(--primary-color);
+                          position: absolute;
+                          left: 50%;
+                          transform: translateX(-50%);
+                          width: 100%;
+                          pointer-events: none;">
+                    液量核算系统
+                </h2>
             </div>
-            <div class="invokeBox">
-                <button id="openUrl">open_url_browser</button>
-                <button id="openUrlNew">open_url_new</button>
-                <button id="runCommand">run_command</button>
-                <button id="downloadFile">download_file</button>
-                <button id="getExeDir">get_exe_dir</button>
-                <button id="getEnvVar">get_env_var</button>
-                <button id="findPort">find_port</button>
+            
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="exportData()">导出数据</button>
+                <button class="btn btn-success" onclick="generateSummary()">生成汇总</button>
+                <button class="btn btn-dark" onclick="window.open('branch.html')"> 支线统计</button>
+                <button class="btn btn-secondary" id="toggleModeBtn" onclick="toggleStatMode()">切换为小时数统计</button>
+                <button class="btn btn-warning" onclick="clearData()">重置操作</button>
+                <button class="btn btn-danger" onclick="clearAllData()">全部清除</button>
+                <button class="btn btn-info" onclick="showInstructions()">使用说明</button>
             </div>
-        </main>
-    </body>
+        </div>
+
+        <!-- 主表格 -->
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+<thead class="fixed-header">
+    <tr>
+        <th style="width:80px">选择框</th>
+        <th style="width:80px">序号</th>
+        <th style="width:150px">井组
+		<span style="font-size:12px; color:#FFFF60; cursor:help" title="点击切换井组状态：井组正常→井组停井→井组开井→井组正常">（点击切换）</span></th>
+        <th>井号</th>
+        <th>油井状态
+    <span style="font-size:12px; color:#FFFF60; cursor:help" title="点击切换油井状态：正常→停井→开井→正常">（点击切换）</span>
+</th>
+        <th style="width:90px">单流阀</th>
+        <!-- 动态表头：停井/开井时间 or 影响小时数 -->
+        <th id="thTime1" style="min-width:80px;max-width:120px;">停井时间</th>
+        <th id="thTime2" style="min-width:80px;max-width:120px;">开井时间</th>
+        <th>日液量(t)</th>
+        <th>日油量(t)</th>
+        <th>日水量(m³)</th>
+        <th>日气量(m³)</th>
+        <th>备注</th>
+    </tr>
+</thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+<!-- 在操作区下方添加批量操作控件 -->
+<div class="mb-3 border p-2 bg-light">
+<div class="row g-2 align-items-center">
+    <div class="col-auto">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text">井组筛选</span>
+            <select class="form-select" id="groupFilter">
+                <option value="">全部井组</option>
+            </select>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text">状态筛选</span>
+            <select class="form-select" id="statusFilter">
+                <option value="">全部状态</option>
+                <option value="0">正常井</option>
+                <option value="1">停井中</option>
+                <option value="2">已开井</option>
+                <option value="long">长停井</option>
+            </select>
+        </div>
+    </div>
+		
+        <div class="col-auto">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="selectAll">
+                <label class="form-check-label small">全选</label>
+            </div>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                <button class="btn btn-sm btn-danger" onclick="batchToggleStatus(1)">批量关井</button>
+                <button class="btn btn-sm btn-success" onclick="batchToggleStatus(2)">批量开井</button>
+            </div>
+        </div>
+        <div class="col-auto">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text">停井时间</span>
+                <input type="time" class="form-control" id="batchStopTime">
+            </div>
+        </div>
+        <div class="col-auto">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text">开井时间</span>
+                <input type="time" class="form-control" id="batchStartTime">
+            </div>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-sm btn-primary" onclick="applyBatchTime()">时间应用</button>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-sm btn-secondary" id="resetFilterBtn">重置筛选</button>
+        </div>
+    </div>
+</div>
+        <!-- 统计信息 -->
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">停井统计</div>
+                    <div class="card-body">
+                        <p>总停井数：<span id="totalStoppedCard">0</span></p>
+                        <p>无单流阀停井数：<span id="noValveStopped">0</span></p>
+                           <p>停井油井日产量：
+        日液<span id="stoppedLiquid">0</span>t，日油<span id="stoppedOil">0</span>t，日气<span id="stoppedGas">0</span>m³
+    </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">开井状态</div>
+                    <div class="card-body">
+                        <p>已开井数：<span id="totalStarted">0</span></p>
+                        <p>未开井数：<span id="totalNotStarted">0</span></p>
+                        <p>未开油井日产量：
+        日液<span id="notStartedLiquid">0</span>t，日油<span id="notStartedOil">0</span>t，日气<span id="notStartedGas">0</span>m³
+    </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">产量影响</div>
+                    <div class="card-body">
+    <p>影响产量：
+        液量<span id="affectedLiquid">0</span>t，油量<span id="affectedOil">0</span>t，气量<span id="affectedGas">0</span>m³
+    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 打印模态框 -->
+    <div class="modal fade" id="printModal">
+  <div class="modal-dialog modal-lg"> <!-- 将modal-xl改为modal-lg -->
+    <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">停井数据汇总表</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body print-page" id="printContent"></div>
+                <div class="modal-footer">
+                    <!-- 打印按钮已移除 -->
+                </div>
+            </div>
+        </div>
+    </div>
+<div class="modal fade" id="instructionModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">海四管理区液量核算系统使用指南</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="line-height:1.8;">
+                <h5 class="text-primary mb-3">一、系统概述</h5>
+                <div class="border p-3 mb-3">
+                    本系统用于油井异常停井后的产量核算，主要功能包括：
+                    <ul>
+                        <li>导入数据自动识别</li>
+                        <li>自动计算停井产量损失</li>
+                        <li>生成数据报表</li>
+                    </ul>
+                </div>
+
+                <!-- 新增小时数统计模式说明 -->
+                <h5 class="text-primary mb-3">★ 小时数统计模式说明</h5>
+                <div class="border p-3 mb-3 bg-warning-subtle">
+                    <ul>
+                        <li><b>切换方式：</b>点击主界面"切换为小时数统计"按钮，可在常规模式与小时数模式间切换。</li>
+                        <li><b>输入规则：</b>小时数模式下，表格"停井时间/开井时间"合并为"影响小时数"，可直接输入小数，支持批量设置。</li>
+                        <li><b>统计逻辑：</b>只要输入了小时数（长停井除外），均参与影响液量统计，<br>影响液量=小时数/24×日产量，不再区分油井状态。</li>
+                        <li><b>导出与汇总：</b>导出Excel和生成汇总时，仅包含井组、井号、影响小时数、日产量、影响液量等核心字段，表头为中文。</li>
+                        <li><b>重置与清除：</b>"重置操作"会清空所有小时数和操作状态，"全部清除"会清空所有数据，小时数模式下同样有效。</li>
+                        <li><b>模式记忆：</b>切换后会自动记忆当前统计模式，刷新页面后保持不变。</li>
+                    </ul>
+                    <div class="alert alert-info mt-2 mb-0">
+                        <b>适用场景：</b>适合需要直接按小时统计影响液量的特殊核算需求。
+                    </div>
+                </div>
+
+                <h5 class="text-primary mb-3">二、数据导入</h5>
+                <div class="border p-3 mb-3">
+                    <h6>1. 文件要求：</h6>
+                    <ul>
+                        <li>文件格式：Excel 2007+ (.xlsx) 或 Excel 97-2003 (.xls)</li>
+                        <li>必需字段（不得更改导入模板的单元格顺序）：
+                            <span class="badge bg-dark">B井组</span>
+                            <span class="badge bg-dark">C井号</span>
+                            <span class="badge bg-dark">P日液量(t)</span>
+                            <span class="badge bg-dark">Q日油量(t)</span>
+                            <span class="badge bg-dark">S日气量(m³)</span>
+                        </li>
+                       <li>导入文件下载：
+    <a href="http://10.67.185.114:8080/WebReport/ReportServer?reportlet=hysczh/rb/yjrb.cpt&__bypagesize__=false"  
+       class="btn btn-sm btn-outline-primary"
+       target="_blank"
+       style="text-decoration: none">
+        油井日报 
+    </a>
+</li>
+                    </ul>
+
+                    <h6>2. 导入流程：</h6>
+                    <ol>
+                        <li>点击【选择文件】按钮</li>
+                        <li>选择刚下载的油井日报yjrb.xls文件</li>
+                        <li>系统自动执行：
+                            <ul>
+                                <li>过滤小计/合计行</li>
+                                <li>识别长停井（油量=0）</li>
+                                <li>初始化油井状态</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+
+    <h5 class="text-primary mb-3">三、油井状态操作</h5>
+    <div class="border p-3 mb-3">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>单井状态切换：</h6>
+                <ul>
+                    <li>正常井 → 点击变为停井（红色）</li>
+                    <li>停井 → 点击变为开井（绿色）</li>
+                    <li>开井 → 点击恢复正常</li>
+                    <li class="text-muted">长停井（灰色不可操作）</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>时间设置规则：</h6>
+                <ul>
+                    <li>停井状态：可填写停井时间</li>
+                    <li>开井状态：可填写开井时间</li>
+                    <li>时间格式：HH:mm</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- 新增井组状态说明 -->
+        <div class="mt-3 border-top pt-3">
+            <h6>井组状态操作：</h6>
+            <ul>
+                <li>操作位置：每个井组名称旁的按钮</li>
+                <li>状态循环：正常 → 全停 → 全开 → 正常</li>
+                <li>状态显示：
+                    <ul class="list-inline">
+                        <li class="list-inline-item">
+                            <span class="badge group-normal">井组正常</span>
+                        </li>
+                        <li class="list-inline-item">
+                            <span class="badge group-stopped">井组全停</span>
+                        </li>
+                        <li class="list-inline-item">
+                            <span class="badge group-started">井组全开</span>
+                        </li>
+                    </ul>
+                </li>
+                <li>自动处理逻辑：
+                    <ul>
+                        <li>执行全停/全开时将跳过长停井</li>
+                        <li>混合状态显示为"井组正常"</li>
+                    </ul>
+                </li>
+                <li class="text-danger">注意：长停井组（整组油量=0）按钮将禁用</li>
+            </ul>
+        </div>
+
+        <div class="mt-3 border-top pt-3">
+            <h6>批量操作流程：</h6>
+            <ul>
+                <li><b>筛选目标井：</b>
+                    <ul>
+                        <li>方式一：通过井组筛选器选择特定井组的油井</li>
+                        <li>方式二：通过状态筛选器选择特定状态的油井</li>
+                        <li>方式三：使用复选框手动选择目标油井</li>
+                        <li>方式四：点击"全选"框选择当前显示的所有油井</li>
+                    </ul>
+                </li>
+                <li><b>执行批量操作：</b>
+                    <ul>
+                        <li>点击"批量关井"按钮将符合条件的油井设为停井状态</li>
+                        <li>点击"批量开井"按钮将符合条件的油井设为开井状态</li>
+                    </ul>
+                </li>
+                <li><b>批量设置时间：</b>
+                    <ul>
+                        <li>填写"停井时间"输入框设置批量停井时间</li>
+                        <li>填写"开井时间"输入框设置批量开井时间</li>
+                        <li>点击"时间应用"按钮批量更新选中油井的时间</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <div class="mt-3 border-top pt-3">
+            <h6>批量操作逻辑规则：</h6>
+            <table class="table table-sm stat-table">
+                <thead>
+                    <tr class="table-primary">
+                        <th style="width:10%">操作类型</th>
+                        <th style="width:30%">状态组合</th>
+                        <th style="width:30%">执行结果</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 批量关井规则 -->
+                    <tr>
+                        <td rowspan="4">批量关井</td>
+                        <td>全部正常状态</td>
+                        <td>全部改为停井中</td>
+                    </tr>
+                    <tr>
+                        <td>包含已开井状态</td>
+                        <td>禁止操作，弹出提示</td>
+                    </tr>
+                    <tr>
+                        <td>全部停井中状态</td>
+                        <td>禁止操作，弹出提示</td>
+                    </tr>
+                    <tr>
+                        <td>混合正常和停井中</td>
+                        <td>仅修改正常状态井</td>
+                    </tr>
+                    
+                    <!-- 批量开井规则 -->
+                    <tr>
+                        <td rowspan="5">批量开井</td>
+                        <td>全部停井中状态</td>
+                        <td>全部改为已开井</td>
+                    </tr>
+                    <tr>
+                        <td>包含正常状态</td>
+                        <td>禁止操作，弹出提示</td>
+                    </tr>
+                    <tr>
+                        <td>全部已开井状态</td>
+                        <td>禁止操作，弹出提示</td>
+                    </tr>
+                    <tr>
+                        <td>混合正常和已开井</td>
+                        <td>禁止操作，弹出提示</td>
+                    </tr>
+                    <tr>
+                        <td>混合停井中和已开井</td>
+                        <td>仅修改停井中状态井</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="alert alert-warning mt-2">
+                <b>通用规则：</b>
+                <ul>
+                    <li>长停井始终不可操作</li>
+                    <li>时间设置仅影响符合状态的油井</li>
+                    <li>混合状态操作时仅修改符合条件的油井</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="mt-3 border-top pt-3">
+            <h6>批量时间应用规则：</h6>
+            <table class="table table-sm stat-table">
+                <thead>
+                    <tr class="table-primary">
+                        <th style="width:15%">应用场景</th>
+                        <th style="width:35%">条件</th>
+                        <th style="width:35%">结果</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td rowspan="2">停井时间</td>
+                        <td>应用于停井状态的油井</td>
+                        <td>成功更新停井时间</td>
+                    </tr>
+                    <tr>
+                        <td>应用于非停井状态的油井</td>
+                        <td>不更新时间，自动跳过</td>
+                    </tr>
+                    <tr>
+                        <td rowspan="2">开井时间</td>
+                        <td>应用于已开井状态的油井</td>
+                        <td>成功更新开井时间</td>
+                    </tr>
+                    <tr>
+                        <td>应用于非开井状态的油井</td>
+                        <td>不更新时间，自动跳过</td>
+                    </tr>
+                    <tr>
+                        <td>混合应用</td>
+                        <td>同时设置停井和开井时间</td>
+                        <td>根据各井状态自动匹配适用时间</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3 border-top pt-3">
+            <h6>筛选与批量操作组合技巧：</h6>
+            <div class="alert alert-info mt-2">
+                <b>常用组合操作：</b>
+                <ul>
+                    <li><b>井组批量关井：</b>先筛选特定井组，再点击"批量关井"</li>
+                    <li><b>井组批量开井：</b>先筛选特定井组的停井中状态，再点击"批量开井"</li>
+                    <li><b>统一时间设置：</b>先筛选相同状态的油井，再应用统一时间</li>
+                    <li><b>部分选择操作：</b>在筛选结果中通过复选框选择部分油井，再执行批量操作</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="mt-3 border-top pt-3">
+            <h6>清除说明：</h6>
+            <div class="d-flex">
+                <div class="d-flex flex-column flex-grow-1">
+                    <!-- 操作项1 -->
+                    <div class="d-flex align-items-start">
+                        <span class="text-danger" style="min-width: 85px">重置操作</span>
+                        <span class="ps-2">- 清除当前操作保留基础数据（保留单流阀数据）</span>
+                    </div>
+                    <!-- 操作项2 -->
+                    <div class="d-flex align-items-start">
+                        <span class="text-danger" style="min-width: 85px">全部清除</span>
+                        <span class="ps-2">- 删除所有数据恢复初始状态</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-warning mt-3">
+            <b>注意事项：</b>
+            <ul>
+                <li>批量关井/开井会自动清除原有时间记录</li>
+                <li>时间批量设置需符合状态要求（停井时间仅限停井状态）</li>
+                <li>长停井无法被选中操作</li>
+                <li>单流阀状态根据现场实际选择。重置操作保留单流阀数据，全部清除将删除所有数据</li>
+            </ul>
+        </div>
+    </div>
+
+                <h5 class="text-primary mb-3">四、统计指标说明</h5>
+                <div class="border p-3 mb-3">
+    <table class="table table-sm stat-table">
+                        <tr class="table-primary">
+                            <th style="width:10%">统计项</th>
+                            <th style="width:30%">计算逻辑</th>
+                            <th style="width:20%">数据来源</th>
+                        </tr>
+                        <tr>
+                            <td>停井日产量</td>
+                            <td>∑（停井状态油井的日产量）</td>
+                            <td>当前所有停井井数据</td>
+                        </tr>
+                        <tr>
+                            <td>产量影响</td>
+                            <td>停井时间差(小时)/24 × 日产量</td>
+                            <td>最近一次停开井记录</td>
+                        </tr>
+                        <tr>
+                            <td>长停井判定</td>
+                            <td>日油量=0</td>
+                            <td>系统自动计算</td>
+                        </tr>
+                    </table>
+					    </div>
+				
+					<h5 class="text-primary mb-3">五、支线统计说明</h5>
+<div class="border p-3 mb-3">
+    <h6>支线分配管理操作指南：</h6>
+    <ul>
+        <li>布局说明：支线按CB4E、CB1F、CB22F、CB26四条进行统计</li>
+        <li>拖拽功能：井组可在不同支线间拖拽移动</li>
+        <li>未分配井组：显示在四列支线下方区域</li>
+        <li>数据同步：调整后自动更新统计表数据</li>
+        <li>产量统计：各支线顶部显示当前液量/油量合计</li>
+    </ul>
+    <div class="alert alert-info mt-2">
+        小贴士：双击井组名称可快速查看该井组所有油井明细
+    </div>
+</div>
+					<h5 class="text-primary mb-3">六、系统生成声明</h5>
+<div class="border p-3 mb-3 bg-light rounded-3">
+    <!-- 主声明区块 -->
+    <div class="alert alert-dark mb-4">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-file-earmark-lock fs-4 me-3 text-primary"></i>
+            <div class="flex-grow-1">
+                <h5 class="text-dark mb-3">声明</h5>
+                <ul class="list-unstyled mb-4">
+                    <li class="d-flex align-items-center mb-3">
+                        <i class="bi bi-cpu me-2 text-primary"></i>
+                        技术支持：海四采油管理区 
+                    </li>
+                    <li class="d-flex align-items-center mb-3">
+                        <i class="bi bi-shield-lock me-2 text-success"></i>
+                        数据安全：符合GB/T 35273-2020《个人信息安全规范》
+                    </li>
+                    <li class="d-flex align-items-center">
+                        <i class="bi bi-clock-history me-2 text-info"></i>
+                        当前版本：海四液量核算系统 v0.2.17（2025-05-23更新）
+                    </li>
+                </ul>
+ 
+                <!-- 免责条款 -->
+                <div class="border-top pt-3">
+                    <h6 class="text-dark mb-2">使用须知</h6>
+                    <div class="d-flex align-items-start text-muted small">
+                        <i class="bi bi-exclamation-diamond me-2 text-warning"></i>
+                        <div>
+                            <p class="mb-1">系统生成内容仅供参考，最终数据以生产报表为准</p>
+                            <p class="mb-0">计算结果需经人工复核后方可使用</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+ 
+    <!-- 数据声明区块 -->
+    <div class="alert alert-warning mb-0">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-database-exclamation fs-4 me-3 text-warning"></i>
+            <div class="flex-grow-1">
+                <h5 class="text-dark mb-3">数据存储声明</h5>
+                <div class="mb-4">
+                    <p class="text-secondary small mb-2">系统不存储以下敏感数据：</p>
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-light text-dark border">油井参数</span>
+                        <span class="badge bg-light text-dark border">个人信息</span>
+                        <span class="badge bg-light text-dark border">系统信息</span>
+                    </div>
+                </div>
+                <div class="border-top pt-3">
+                    <div class="d-flex align-items-center text-muted small">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <span>操作数据仅存于本地浏览器缓存（有效期30天）</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+				                    <div class="alert alert-info mt-2">
+                        制作单位：海四采油管理区中心三号平台
+                    </div>
+
+</div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/xlsx.full.min.js"></script>
+    <script src="app.js?v=<?=filemtime('app.js')?>"></script> 
+    <script>
+    function updateTableHeaderByMode() {
+        var th1 = document.getElementById('thTime1');
+        var th2 = document.getElementById('thTime2');
+        if (!th1 || !th2) return;
+        if (window.isHourMode) {
+            th1.textContent = '影响小时数';
+            th1.colSpan = 2;
+            th2.style.display = 'none';
+        } else {
+            th1.textContent = '停井时间';
+            th1.colSpan = 1;
+            th2.textContent = '开井时间';
+            th2.style.display = '';
+        }
+    }
+    window.updateTableHeaderByMode = updateTableHeaderByMode;
+    // 在切换模式和页面加载时调用
+    window.addEventListener('DOMContentLoaded', function() {
+        window.isHourMode = localStorage.getItem('isHourMode') === 'true';
+        updateTableHeaderByMode();
+    });
+    if (window.toggleStatMode) {
+        var oldToggle = window.toggleStatMode;
+        window.toggleStatMode = function() {
+            oldToggle();
+            window.isHourMode = localStorage.getItem('isHourMode') === 'true';
+            updateTableHeaderByMode();
+        }
+    }
+    </script>
+</body>
 </html>
